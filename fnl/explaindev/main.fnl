@@ -1,38 +1,63 @@
 (module explaindev.main
-  {autoload {vim aniseed.nvim
+  {autoload {nvim aniseed.nvim
              util aniseed.nvim.util
              aniseed-string aniseed.string
              core aniseed.core}})
 
-(def payload "{\"language\":\"{{LANGUAGE}}\",\"mode\":\"rightClick\",\"source\":\"{{SOURCE}}\",\"explanationLevel\":\"advanced\",\"locale\":\"en\"}")
 (def credentials (os.getenv "EXPLAINDEV_CREDS"))
+
 (def url "https://api.explain.dev/api/explain")
 
+(def payload {:language nil
+              :mode "rightClick"
+              :source nil
+              :explanationLevel "advanced"
+              :locale "en"})
+
+(defn ->tojson [payload]
+  (core.spit "/tmp/payload" (core.str payload))
+  (->
+    (nvim.fn.systemlist "cat /tmp/payload | jet --to json")
+    (aniseed-string.join)))
+
 (defn get-selected-text [] 
-  (let [line_start (core.get (vim.fn.getpos "'<") 3)
-        line_end (core.get  (vim.fn.getpos "'>") 3)
-        lines (vim.fn.getline line_start line_end)]
+  (let [line_start (core.get (nvim.fn.getpos "'<") 3)
+        line_end (core.get  (nvim.fn.getpos "'>") 3)
+        lines (nvim.fn.getline line_start line_end)]
     (aniseed-string.join lines)))
 
 (defn buil-request-command [payload] 
-  (core.str "! curl -s " url " -H 'Authorization: Basic " credentials "' -H 'Content-Type: application/json' --data-raw '" payload "' | jq -r '.answer'"))
-
-(defn clean-comand-output [output] 
-  (-> output (aniseed-string.split "\r") core.last aniseed-string.trim))
+  (core.str "curl -s " url " -H 'Authorization: Basic " credentials "' -H 'Content-Type: application/json' -d '" payload "' | jq -r '.answer'"))
 
 (defn exec-request [request-payload] 
   (let [curl-command (buil-request-command request-payload)
-        raw-result (util.with-out-str #(vim.command curl-command))]
-    (clean-comand-output raw-result)))
+        raw-result (nvim.fn.systemlist curl-command)]
+    raw-result))
 
-(defn init []
+(defn open-buffer [text]
+  (let [buff (nvim.create_buf false true)
+        width (nvim.get_option "columns")
+        win_width (math.ceil (* width 0.8))
+        height (nvim.get_option "lines")
+        win_height (math.ceil (- (* height  0.8) 4))
+        row (math.ceil (- (/ (- height win_height) 2) 1))
+        col (math.ceil (/ (- width win_width) 2))
+        opts {:style "minimal"
+              :relative "editor"
+              :width win_width
+              :height win_height
+              :row row
+              :col col}]
+    (nvim.buf_set_option buff "bufhidden" "wipe")
+    (nvim.buf_set_lines buff 0 -1 false text)
+    (nvim.open_win buff true opts)))
+
+(defn explain []
   (let [selected-text (get-selected-text)
-        request-payload (-> payload 
-                            (string.gsub "{{LANGUAGE}}" "plaintext")
-                            (string.gsub "{{SOURCE}}" selected-text))]
-    (-> request-payload (exec-request) (clean-comand-output))))
+        request-payload (core.assoc payload :language "plaintext" :source selected-text)]
+    (-> request-payload
+        (->tojson)
+        (exec-request)
+        (open-buffer))))
 
-(comment
-  (init))
-
-
+(defn init [])

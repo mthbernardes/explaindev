@@ -28,8 +28,8 @@ local function __3etojson(payload0)
 end
 _2amodule_2a["->tojson"] = __3etojson
 local function get_selected_text()
-  local line_start = core.get(nvim.fn.getpos("'<"), 3)
-  local line_end = core.get(nvim.fn.getpos("'>"), 3)
+  local line_start = core.get(nvim.fn.getpos("'<"), 2)
+  local line_end = core.get(nvim.fn.getpos("'>"), 2)
   local lines = nvim.fn.getline(line_start, line_end)
   return aniseed_string.join(lines)
 end
@@ -61,10 +61,11 @@ _2amodule_2a["open-buffer"] = open_buffer
 local function explain()
   local selected_text = get_selected_text()
   local request_payload = core.assoc(payload, "language", "plaintext", "source", selected_text)
-  return open_buffer(exec_request(__3etojson(request_payload)))
+  return selected_text
 end
 _2amodule_2a["explain"] = explain
 local function init()
 end
 _2amodule_2a["init"] = init
+explain()
 return _2amodule_2a

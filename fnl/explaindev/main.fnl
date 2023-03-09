@@ -21,8 +21,8 @@
     (aniseed-string.join)))
 
 (defn get-selected-text [] 
-  (let [line_start (core.get (nvim.fn.getpos "'<") 3)
-        line_end (core.get  (nvim.fn.getpos "'>") 3)
+  (let [line_start (core.get (nvim.fn.getpos "'<") 2)
+        line_end (core.get  (nvim.fn.getpos "'>") 2)
         lines (nvim.fn.getline line_start line_end)]
     (aniseed-string.join lines)))
 
@@ -55,9 +55,13 @@
 (defn explain []
   (let [selected-text (get-selected-text)
         request-payload (core.assoc payload :language "plaintext" :source selected-text)]
-    (-> request-payload
-        (->tojson)
-        (exec-request)
-        (open-buffer))))
+    selected-text
+    ;(-> request-payload
+    ;    (->tojson)
+    ;    (exec-request)
+    ;    (open-buffer))
+    ))
 
 (defn init [])
+
+(explain)
